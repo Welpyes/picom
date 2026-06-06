@@ -342,6 +342,10 @@ typedef struct options {
 	int unredir_if_possible_delay;
 	/// Forced redirection setting through D-Bus.
 	switch_t redirected_force;
+	/// Path to test image
+	bool pseudo_transparency;
+	/// Radius of pseudo-transparency blur
+	int pseudo_blur;
 	/// Whether to stop painting. Controlled through D-Bus.
 	switch_t stoppaint_force;
 	/// Whether to enable D-Bus support.

@@ -53,7 +53,7 @@ char **xdg_config_dirs(void) {
 	size_t count = 0;
 
 	if (!xdgd) {
-		xdgd = "/etc/xdg";
+		xdgd = "/data/data/com.termux/files/usr/etc/xdg";
 	}
 
 	for (int i = 0; xdgd[i]; i++) {

@@ -27,6 +27,7 @@
 #include "log.h"
 #include "picom.h"
 #include "region.h"
+#include "utils/image.h"
 #include "utils/kernel.h"
 #include "utils/misc.h"
 #include "x.h"
@@ -89,6 +90,10 @@ typedef struct xrender_data {
 	xcb_render_picture_t black_pixel;
 	/// 1x1 temporary picture for tinting
 	xcb_render_picture_t tint_pixel;
+
+	/// Test image for background
+	xcb_render_picture_t pseudo_transparency_pict;
+	int pseudo_transparency_width, pseudo_transparency_height;
 
 	xcb_special_event_t *present_event;
 
@@ -339,6 +344,15 @@ static bool xrender_blit(struct backend_base *base, ivec2 origin,
 	xrender_set_picture_repeat(xd, inner->pict, XCB_RENDER_REPEAT_NORMAL);
 
 	x_set_picture_clip_region(xd->base.c, target->pict, 0, 0, args->target_mask);
+
+	if (xd->pseudo_transparency_pict != XCB_NONE && (args->window_types & (1 << WINTYPE_NORMAL)) &&
+	    (has_alpha || args->corner_radius != 0)) {
+		xcb_render_composite(xd->base.c->c, XCB_RENDER_PICT_OP_OVER,
+		                     xd->pseudo_transparency_pict, mask_pict, target->pict,
+		                     to_i16_checked(origin.x), to_i16_checked(origin.y), 0, 0,
+		                     to_i16_checked(origin.x), to_i16_checked(origin.y), tmpew, tmpeh);
+	}
+
 	if (args->corner_radius != 0) {
 		if (inner->rounded_rectangle != NULL &&
 		    inner->rounded_rectangle->radius != (int)args->corner_radius) {
@@ -550,8 +564,8 @@ xrender_copy_area(struct backend_base *base, ivec2 origin, image_handle target_h
 	auto source = (struct xrender_image_data_inner *)source_handle;
 	auto target = (struct xrender_image_data_inner *)target_handle;
 	auto extent = pixman_region32_extents(region);
-	x_set_picture_clip_region(base->c, source->pict, 0, 0, region);
 	x_clear_picture_clip_region(base->c, target->pict);
+	x_set_picture_clip_region(base->c, source->pict, 0, 0, region);
 	xrender_set_picture_repeat(xd, source->pict, XCB_RENDER_REPEAT_PAD);
 	xcb_render_composite(
 	    base->c->c, XCB_RENDER_PICT_OP_SRC, source->pict, XCB_NONE, target->pict,
@@ -771,6 +785,7 @@ static void xrender_deinit(backend_t *backend_data) {
 	x_free_picture(xd->base.c, xd->white_pixel);
 	x_free_picture(xd->base.c, xd->black_pixel);
 	x_free_picture(xd->base.c, xd->tint_pixel);
+	x_free_picture(xd->base.c, xd->pseudo_transparency_pict);
 	free(xd);
 }
 
@@ -968,6 +983,48 @@ static backend_t *xrender_init(session_t *ps, xcb_window_t target) {
 	init_backend_base(&xd->base, ps);
 	xd->base.ops = xrender_ops;
 	xd->shm_fd = -1;
+
+	if (ps->o.pseudo_transparency) {
+		auto pixmap = x_get_root_back_pixmap(xd->base.c, ps->atoms);
+		if (pixmap != XCB_NONE) {
+			int w, h;
+			xcb_pixmap_t blurred = XCB_NONE;
+			if (ps->o.pseudo_blur > 0) {
+				blurred = blur_pixmap(xd->base.c, pixmap, &w, &h, ps->o.pseudo_blur);
+			}
+
+			if (blurred != XCB_NONE) {
+				xd->pseudo_transparency_pict = x_create_picture_with_visual_and_pixmap(
+				    xd->base.c, x_get_visual_for_depth(xd->base.c->screen_info, 32),
+				    blurred, 0, NULL);
+				xd->pseudo_transparency_width = w;
+				xd->pseudo_transparency_height = h;
+				xcb_free_pixmap(xd->base.c->c, blurred);
+			} else {
+				xcb_get_geometry_reply_t *r = xcb_get_geometry_reply(
+				    xd->base.c->c, xcb_get_geometry(xd->base.c->c, pixmap), NULL);
+				if (r) {
+					xcb_visualid_t visual =
+					    r->depth == xd->base.c->screen_info->root_depth
+					        ? xd->base.c->screen_info->root_visual
+					        : x_get_visual_for_depth(xd->base.c->screen_info,
+					                                 r->depth);
+
+					xd->pseudo_transparency_pict =
+					    x_create_picture_with_visual_and_pixmap(
+					        xd->base.c, visual, pixmap, 0, NULL);
+					xd->pseudo_transparency_width = r->width;
+					xd->pseudo_transparency_height = r->height;
+					free(r);
+				}
+			}
+
+			if (xd->pseudo_transparency_pict != XCB_NONE) {
+				xrender_set_picture_repeat(xd, xd->pseudo_transparency_pict,
+				                           XCB_RENDER_REPEAT_NORMAL);
+			}
+		}
+	}
 
 	if (!ensure_xshm(xd, initial_shm_size)) {
 		free(xd);

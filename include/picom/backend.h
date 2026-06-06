@@ -163,6 +163,8 @@ struct backend_blit_args {
 	/// `corner_radius` to create a border for the rounded corners.
 	/// Setting this has no effect if `corner_radius` is 0.
 	int border_width;
+	/// Window types bitmask, if the source is a window.
+	uint32_t window_types;
 	/// Whether the source image should be inverted.
 	bool color_inverted;
 };

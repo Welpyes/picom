@@ -103,6 +103,9 @@ if get_option('unittest')
 	cflags += ['-DUNIT_TEST']
 endif
 
+imlib2 = dependency('imlib2', required: true) 
+deps += [imlib2]
+
 host_system = host_machine.system()
 if host_system == 'linux'
 	cflags += ['-DHAS_INOTIFY']

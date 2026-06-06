@@ -9,5 +9,6 @@ srcs += [
 		'str.c',
 		'ui.c',
 		'process.c',
+		'image.c',
 	),
 ]

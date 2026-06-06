@@ -1082,6 +1082,10 @@ bool parse_config_libconfig(options_t *opt, const char *config_file) { /*NOLINT(
 		}
 		opt->logpath = strdup(sval);
 	}
+	// --pseudo-transparency
+	lcfg_lookup_bool(&cfg, "pseudo-transparency", &opt->pseudo_transparency);
+	// --pseudo-blur
+	config_lookup_int(&cfg, "pseudo-blur", &opt->pseudo_blur);
 	// --use-ewmh-active-win
 	lcfg_lookup_bool(&cfg, "use-ewmh-active-win", &opt->use_ewmh_active_win);
 	// --unredir-if-possible

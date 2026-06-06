@@ -494,6 +494,8 @@ static const struct picom_option picom_options[] = {
     [309] = {"unredir-if-possible-delay"   , INTEGER(unredir_if_possible_delay, 0, INT_MAX) , "Delay before unredirecting the window, in milliseconds. Defaults to 0."},
     [310] = {"write-pid-path"              , NAMED_STRING(write_pid_path, "PATH")           , "Write process ID to a file."},
     [322] = {"log-file"                    , STRING(logpath)                                , "Path to the log file."},
+    [345] = {"pseudo-transparency"          , ENABLE(pseudo_transparency)                    , "Use root background as test image for XRender (pseudo-transparency)."},
+    [346] = {"pseudo-blur"                  , INTEGER(pseudo_blur, 0, INT_MAX)               , "Radius of pseudo-transparency blur."},
     [326] = {"max-brightness"              , FLOAT(max_brightness, 0, 1)                    , "Dims windows which average brightness is above this threshold. Requires "
                                                                                               "--no-use-damage. (default: 1.0, meaning no dimming)"},
     [329] = {"blur-size"                   , INTEGER(blur_radius, 0, INT_MAX)               , "The radius of the blur kernel for 'box' and 'gaussian' blur method."},
